@@ -15,6 +15,7 @@
 import {describe, it, expect, vi, beforeEach, afterEach} from 'vitest';
 import {render, screen, fireEvent, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import {hasPressedArm} from '../__tests__/pressState';
 import {CheckboxInput} from './CheckboxInput';
 import {Theme} from '../theme/Theme';
 import {defineTheme} from '../theme/defineTheme';
@@ -268,6 +269,27 @@ describe('CheckboxInput', () => {
     expect(checkbox.getAttribute('aria-describedby')).toContain(description.id);
   });
 
+  it('merges a consumer aria-describedby with its own description id', () => {
+    render(
+      <>
+        <span id="row-hint">Hint from the row</span>
+        <CheckboxInput
+          label="Select row"
+          isLabelHidden
+          description="Selects this row for bulk actions"
+          aria-describedby="row-hint"
+          value={false}
+          onChange={() => {}}
+        />
+      </>,
+    );
+    const checkbox = screen.getByRole('checkbox');
+    const description = screen.getByText('Selects this row for bulk actions');
+    const ids = checkbox.getAttribute('aria-describedby')!.split(' ');
+    expect(ids).toContain('row-hint');
+    expect(ids).toContain(description.id);
+  });
+
   it('shows label visually by default', () => {
     render(
       <CheckboxInput label="Accept terms" value={false} onChange={() => {}} />,
@@ -413,6 +435,27 @@ describe('CheckboxInput', () => {
         />,
       );
       expect(screen.queryByRole('tooltip', h)).not.toBeInTheDocument();
+    });
+
+    it('keeps a consumer aria-describedby alongside the reason tooltip', () => {
+      render(
+        <>
+          <span id="terms-hint">Required before checkout</span>
+          <CheckboxInput
+            label="Accept terms"
+            value={false}
+            onChange={() => {}}
+            isDisabled
+            disabledMessage="Terms are managed by your administrator"
+            aria-describedby="terms-hint"
+          />
+        </>,
+      );
+      const checkbox = screen.getByRole('checkbox');
+      const tooltip = screen.getByRole('tooltip', h);
+      const ids = checkbox.getAttribute('aria-describedby')!.split(' ');
+      expect(ids).toContain('terms-hint');
+      expect(ids).toContain(tooltip.id);
     });
 
     it('does not render a tooltip when disabled without a reason', () => {
@@ -719,5 +762,38 @@ describe('label theme target', () => {
     const label = screen.getByText('Notify me').closest('label');
     expect(label).toHaveClass('astryx-field-label');
     expect(label).toHaveClass('astryx-checkbox-label');
+  });
+});
+
+describe('pressed state', () => {
+  it('paints the pressed overlay over the indicator while the row is pressed', () => {
+    const {container} = render(
+      <CheckboxInput label="Accept terms" value={false} onChange={() => {}} />,
+    );
+    const box = container.querySelector('.astryx-checkbox-indicator');
+    const wrapper = box?.parentElement?.parentElement;
+    if (wrapper == null) {
+      throw new Error('the checkbox has no indicator wrapper to press');
+    }
+    // The owner paints over the resolved indicator, so the treatment survives a
+    // theme replacement that does not forward style props.
+    expect(hasPressedArm(wrapper)).toBe(true);
+  });
+
+  it('does not expose a pressed arm on a disabled checkbox', () => {
+    const {container} = render(
+      <CheckboxInput
+        label="Unavailable"
+        value={false}
+        onChange={() => {}}
+        isDisabled
+      />,
+    );
+    const box = container.querySelector('.astryx-checkbox-indicator');
+    const wrapper = box?.parentElement?.parentElement;
+    if (wrapper == null) {
+      throw new Error('the checkbox has no indicator wrapper');
+    }
+    expect(hasPressedArm(wrapper)).toBe(false);
   });
 });

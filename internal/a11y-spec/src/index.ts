@@ -27,6 +27,7 @@ export {
   type Enforcement,
   type Expectation,
   type ExpectationContext,
+  type InitialFocusEntryObservation,
   type NormativeSource,
   type PatternContract,
   type WcagCriterion,
@@ -42,6 +43,7 @@ export {
 
 export {
   EVIDENCE_LAYERS,
+  MissingHarnessRelation,
   UnobservableError,
   type ComputedNode,
   type EvidenceLayer,
@@ -85,8 +87,28 @@ export {
 
 export {CHECKBOX_PATTERN, type CheckboxStateFacts} from './patterns/checkbox';
 
+export {
+  RADIO_GROUP_PATTERN,
+  type RadioGroupRole,
+  type RadioGroupStateFacts,
+} from './patterns/radio-group';
+
 export {SWITCH_PATTERN, type SwitchStateFacts} from './patterns/switch';
+
+export {
+  MODAL_DIALOG_PATTERN,
+  type ModalDialogStateFacts,
+} from './patterns/modal-dialog';
+
+export {
+  STATUS_MESSAGE_PATTERN,
+  type StatusMessageStateFacts,
+} from './patterns/status-message';
 
 export {saysInOrder, spokenWords} from './spoken';
 
 export {BUTTON_PATTERN, type ButtonStateFacts} from './patterns/button';
+
+export {TABS_PATTERN, type TabsStateFacts} from './patterns/tabs';
+
+export {LISTBOX_PATTERN, type ListboxStateFacts} from './patterns/listbox';

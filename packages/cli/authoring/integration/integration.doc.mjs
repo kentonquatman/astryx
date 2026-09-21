@@ -15,8 +15,8 @@ export const doc = {
   description:
     'The astryx.integration.* manifest that sits beside an integration ' +
     "package's package.json. Points the CLI at the package's components, " +
-    'templates, codemods, doc topics, and managed agent guidance, and where to ' +
-    'file issues. Every field is optional.',
+    'templates, codemods, doc topics, source themes, and managed agent guidance, ' +
+    'and where to file issues. Every field is optional.',
   appliesTo: 'astryx.integration.{ts,mjs,js}',
   fields: [
     {
@@ -47,6 +47,13 @@ export const doc = {
       example: "'./docs'",
     },
     {
+      name: 'themes',
+      type: 'string',
+      description:
+        'Relative path to a source-theme catalog root containing manifest.json plus one directory per theme slug. Installed themes appear in `astryx theme list` and can be copied with `astryx theme add`.',
+      example: "'./themes'",
+    },
+    {
       name: 'agentDocs',
       type: '{ append?: readonly string[] }',
       description:
@@ -68,6 +75,7 @@ export const doc = {
   templates: './src/templates',
   codemods: './codemods',
   docs: './docs',
+  themes: './themes',
   agentDocs: {
     append: ['Run acme verify before finishing.'],
   },
@@ -94,13 +102,18 @@ export const doc = {
     },
     {
       type: 'prose',
+      text: 'A themes root is forward-compatible but version-gated: a CLI released before this field ignores it with a warning and continues loading every contribution kind it understands. That older CLI cannot list or add the contributed themes.',
+    },
+    {
+      type: 'prose',
       text:
-        'Validate a manifest with `astryx validate-integration`. It is checked ' +
-        'at the load boundary (parseIntegration): a known field of the wrong ' +
-        'type is an error, and issuesUrl must be a valid URL. A field this CLI ' +
-        'does not know is ignored with a warning rather than rejected, so a ' +
-        'manifest written against a newer CLI still contributes everything ' +
-        'this one understands.',
+        'Validate the manifest with `astryx doctor integration validate`. At the ' +
+        'load boundary, a known field of the wrong type is an error, issuesUrl ' +
+        'must be a valid URL, and unknown fields become warnings so an older CLI ' +
+        'can still load the fields it understands. Before publishing, also run ' +
+        '`templates`, `components`, and `docs` under the same `doctor integration` ' +
+        'group. Those leaves compare authored identities with Core and explain ' +
+        'whether an overlap is intentional or needs a rename.',
     },
   ],
 };

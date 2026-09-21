@@ -5,6 +5,21 @@
  */
 
 /**
+ * Stable public identity for generated registry resources.
+ *
+ * The converter derives a slug from the doc's stable `name` by default. Set
+ * `slug` only when the public URL must differ from that derived value. When a
+ * published slug changes, keep prior relative paths in `aliases` so existing
+ * install commands continue to work.
+ */
+export interface RegistryDocIdentity {
+  /** Lowercase kebab-case leaf slug override. */
+  slug?: string;
+  /** Prior paths within the item's kind root, without `.json`. */
+  aliases?: string[];
+}
+
+/**
  * Documents one element in a component's anatomy breakdown.
  * Anatomy describes the visual/structural parts that make up a component
  * (e.g. a Button has: left icon, label, end content, container).
@@ -442,14 +457,14 @@ export interface ComponentThemingTarget {
    *  selectors such as `[data-checked="checked"]`. Omit if the element has no
    *  state-driven selectors. */
   states?: string[];
-  /** Set when this target has been RENAMED and this entry is the old name.
-   *  The component still emits the class (via `themeProps`'s `legacyNames`),
-   *  so existing themes keep working, but the docsite should steer readers to
-   *  the replacement. The value is the class name that supersedes this one,
+  /** Set when this target has been renamed and this entry is the old name.
+   *  The component continues emitting the class through `themeProps`'s
+   *  `legacyNames`, so existing themes keep working while discovery and build
+   *  guidance prefer the replacement. The value is the canonical target key
    *  without the `astryx-` prefix — e.g. `"checkbox-indicator"`.
    *
-   *  A theme target is public API; renaming one without this is a silent
-   *  break for every theme styling it. */
+   *  A theme target is public API; deprecation alone does not authorize
+   *  removing either this metadata or runtime support. */
   deprecatedFor?: string;
 }
 
