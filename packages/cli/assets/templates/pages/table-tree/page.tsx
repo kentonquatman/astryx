@@ -448,7 +448,7 @@ npm install canvas-editor
 ### Usage
 
 \`\`\`ts
-import {Canvas} from 'canvas-editor';
+const {Canvas} = await import('canvas-editor');
 
 const canvas = new Canvas(document.querySelector('#root'));
 canvas.add({kind: 'rect', x: 0, y: 0, width: 120, height: 80});
