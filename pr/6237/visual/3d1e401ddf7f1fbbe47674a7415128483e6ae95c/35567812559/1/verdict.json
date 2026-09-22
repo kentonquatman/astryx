@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "status": "pass",
+  "generatedAt": "2026-09-21T07:47:10.984Z",
+  "context": {
+    "sha": "3d1e401ddf7f1fbbe47674a7415128483e6ae95c",
+    "runId": "35567812559",
+    "runAttempt": "1",
+    "headSha": "3d1e401ddf7f1fbbe47674a7415128483e6ae95c",
+    "baseSha": "65c6718e6a208c0a1f57979effa2bd4537196731",
+    "ref": "refs/heads/main",
+    "trustedScope": {
+      "hasStableVisual": true,
+      "broadStableVisual": false,
+      "stableComponents": [
+        "TreeList"
+      ],
+      "stableCoreFiles": [
+        "packages/core/src/TreeList/TreeList.tsx",
+        "packages/core/src/TreeList/TreeListItem.tsx",
+        "packages/core/src/TreeList/TreeListTypes.ts"
+      ],
+      "stableThemes": [],
+      "canaryPackages": []
+    }
+  },
+  "platform": "linux-arm64",
+  "baseline": {
+    "capturedAt": "2026-09-12T01:13:50.430Z",
+    "sha": "e72a3662fd6dbdaf226dfba41a90a70b6827a6a4",
+    "platform": "linux-arm64"
+  },
+  "counts": {
+    "total": 2,
+    "unchanged": 2,
+    "changed": 0,
+    "added": 0,
+    "removed": 0,
+    "failed": 0
+  },
+  "changes": [],
+  "added": [],
+  "removed": [],
+  "failures": [],
+  "targeting": {
+    "unexercisedOverrides": [],
+    "undeclaredTargets": [],
+    "uncoveredTargets": []
+  }
+}
