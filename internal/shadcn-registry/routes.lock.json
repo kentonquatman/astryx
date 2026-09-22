@@ -1002,6 +1002,11 @@
       "aliases": []
     },
     {
+      "name": "component-timer",
+      "path": "components/timer",
+      "aliases": []
+    },
+    {
       "name": "component-timestamp",
       "path": "components/timestamp",
       "aliases": []
@@ -4528,6 +4533,11 @@
     {
       "name": "showcase-time-input-default",
       "path": "showcases/time-input/default",
+      "aliases": []
+    },
+    {
+      "name": "showcase-timer-default",
+      "path": "showcases/timer/default",
       "aliases": []
     },
     {
