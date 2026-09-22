@@ -51,9 +51,17 @@ export const doc = {
       type: '(file: AstryxCodemodFile, api: AstryxCodemodApi) => string | null | undefined',
       description:
         'The transform. Return the new source to rewrite the file, or ' +
-        'null/undefined to leave it unchanged.',
+        'null/undefined to leave it unchanged. Attach an optional synchronous ' +
+        '`prepare(files)` hook to derive shared context for project-aware transforms.',
       required: true,
       fields: [
+        {
+          name: 'transform.prepare',
+          type: '(files: ReadonlyArray<AstryxCodemodFile>) => unknown',
+          description:
+            'Optional synchronous hook called once with every runner-selected ' +
+            'source snapshot. Its return value is passed as api.project.',
+        },
         {
           name: 'file',
           type: 'AstryxCodemodFile',
@@ -93,6 +101,12 @@ export const doc = {
               type: '(...args: unknown[]) => void',
               description:
                 'Report progress (no-op-friendly; provided for jscodeshift parity).',
+            },
+            {
+              name: 'api.project',
+              type: 'unknown',
+              description:
+                'Shared read-only context returned by the transform prepare hook.',
             },
           ],
         },
@@ -142,6 +156,13 @@ export const doc = {
         "The config-codemod variant (type: 'config') carries the same fields " +
         'as a code codemod except fileExtensions: it always targets the ' +
         'astryx.config.* file rather than a set of source files.',
+    },
+    {
+      type: 'prose',
+      text:
+        'A code transform with a `prepare(files)` hook is project-aware. The ' +
+        'runner prepares context once, validates every changed output, and begins ' +
+        'writing only when the complete transform succeeds.',
     },
     {
       type: 'prose',

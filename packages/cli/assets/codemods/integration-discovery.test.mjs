@@ -112,6 +112,57 @@ describe('integration codemod discovery', () => {
     );
   });
 
+  it('prepares and passes shared project context to an integration codemod', async () => {
+    scaffold({
+      '0.2.0/project-aware.mjs': `
+        function transform(file, api) {
+          if (api.project.paths.length !== 2) {
+            throw new Error('missing project context');
+          }
+          return file.source.replace(/foo/g, 'bar');
+        }
+        transform.prepare = files => ({paths: files.map(file => file.path)});
+        export default {
+          type: 'code',
+          title: 'Project aware',
+          fileExtensions: ['.ts', '.tsx'],
+          transform,
+        };
+      `,
+    });
+
+    const project = await Project.load(tmpDir);
+    const byVersion = await discoverIntegrationCodemods(
+      project.loadedIntegrations,
+    );
+    const srcDir = path.join(tmpDir, 'src');
+    fs.mkdirSync(srcDir);
+    fs.writeFileSync(path.join(srcDir, 'a.ts'), 'const foo = 1;\n');
+    fs.writeFileSync(path.join(srcDir, 'b.tsx'), 'const foo = 2;\n');
+    fs.writeFileSync(path.join(srcDir, 'ignored.js'), 'const foo = 3;\n');
+
+    const jscodeshift = (await import('jscodeshift')).default;
+    const groups = selectIntegrationCodemods(byVersion, '0.1.0', '0.2.0');
+    const result = runIntegrationCodemods(groups, {
+      apply: true,
+      path: './src',
+      jscodeshift,
+      silent: true,
+    });
+
+    expect(result.errors).toHaveLength(0);
+    expect(result.totalFilesChanged).toBe(2);
+    expect(fs.readFileSync(path.join(srcDir, 'a.ts'), 'utf-8')).toContain(
+      'const bar = 1',
+    );
+    expect(fs.readFileSync(path.join(srcDir, 'b.tsx'), 'utf-8')).toContain(
+      'const bar = 2',
+    );
+    expect(fs.readFileSync(path.join(srcDir, 'ignored.js'), 'utf-8')).toContain(
+      'const foo = 3',
+    );
+  });
+
   it('discovers and runs a config codemod against astryx.config.*', async () => {
     scaffold({
       '0.2.0/bump-config.mjs': `

@@ -32,6 +32,22 @@ describe('parseCodemod (load boundary)', () => {
     expect(parsed.isOptional).toBe(false);
   });
 
+  it('accepts and preserves a project-aware prepare hook', () => {
+    function transform() {
+      return null;
+    }
+    const prepare = () => ({symbols: new Map()});
+    transform.prepare = prepare;
+
+    const parsed = parseCodemod({
+      type: 'code',
+      title: 'Project aware',
+      transform,
+    });
+
+    expect(parsed.transform.prepare).toBe(prepare);
+  });
+
   it('accepts a code codemod with description, fileExtensions, explicit isOptional', () => {
     const parsed = parseCodemod({
       type: 'code',

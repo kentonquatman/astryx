@@ -193,6 +193,83 @@ describe('runCodemods — unified config codemod path', () => {
       [path.join(srcDir, 'a.ts'), path.join(srcDir, 'b.ts')].sort(),
     );
   });
+  it('prepares one project context from the runner-selected source files', async () => {
+    const srcDir = path.join(tmpDir, 'src');
+    fs.mkdirSync(srcDir);
+    fs.writeFileSync(path.join(srcDir, 'a.ts'), 'const foo = 1;\n');
+    fs.writeFileSync(path.join(srcDir, 'b.tsx'), 'const foo = 2;\n');
+    fs.writeFileSync(path.join(srcDir, 'ignored.css'), '.foo {}\n');
+
+    let prepareCalls = 0;
+    let preparedFiles = [];
+    function transform(file, api) {
+      expect(api.project).toBe('shared-project');
+      return file.source.replace('foo', 'bar');
+    }
+    transform.prepare = files => {
+      prepareCalls++;
+      preparedFiles = files;
+      return 'shared-project';
+    };
+
+    const result = await runCodemods(
+      [
+        {
+          version: '0.1.3',
+          transforms: [
+            {name: 'project-aware', meta: {title: 'project aware'}, transform},
+          ],
+        },
+      ],
+      {apply: true, path: './src', silent: true},
+    );
+
+    expect(result.errors).toHaveLength(0);
+    expect(result.totalFilesChanged).toBe(2);
+    expect(prepareCalls).toBe(1);
+    expect(preparedFiles.map(file => path.basename(file.path)).sort()).toEqual([
+      'a.ts',
+      'b.tsx',
+    ]);
+    expect(preparedFiles.map(file => file.source)).toEqual([
+      'const foo = 1;\n',
+      'const foo = 2;\n',
+    ]);
+  });
+
+  it('does not partially write a project-aware transform when validation fails', async () => {
+    const srcDir = path.join(tmpDir, 'src');
+    fs.mkdirSync(srcDir);
+    const good = path.join(srcDir, 'a.ts');
+    const bad = path.join(srcDir, 'b.ts');
+    fs.writeFileSync(good, 'const foo = 1;\n');
+    fs.writeFileSync(bad, 'const foo = 2;\n');
+
+    function transform(file) {
+      return file.path === bad
+        ? 'const = broken syntax'
+        : file.source.replace('foo', 'bar');
+    }
+    transform.prepare = () => ({prepared: true});
+
+    const result = await runCodemods(
+      [
+        {
+          version: '0.1.3',
+          transforms: [
+            {name: 'atomic-project', meta: {title: 'atomic project'}, transform},
+          ],
+        },
+      ],
+      {apply: true, path: './src', silent: true},
+    );
+
+    expect(result.errors).toHaveLength(1);
+    expect(result.totalFilesChanged).toBe(0);
+    expect(result.writtenFiles).toEqual([]);
+    expect(fs.readFileSync(good, 'utf-8')).toBe('const foo = 1;\n');
+    expect(fs.readFileSync(bad, 'utf-8')).toBe('const foo = 2;\n');
+  });
 });
 
 describe('findSourceFiles — scan boundaries (symlink + build dirs)', () => {

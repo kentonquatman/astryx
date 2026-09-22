@@ -111,6 +111,7 @@
     "postcss": "^8.5.23",
     "postcss-selector-parser": "^7.1.5",
     "recast": "0.23.21",
+    "typescript": "6.0.3",
     "zod": "^4.4.3"
   },
   "peerDependencies": {

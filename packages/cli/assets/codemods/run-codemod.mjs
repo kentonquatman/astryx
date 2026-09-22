@@ -10,7 +10,10 @@
  *   (file, api) => string | null | undefined
  *
  * where `file` is `{path, source}` and `api` is
- * `{jscodeshift, stats, report}`. Config codemods target the consumer's
+ * `{jscodeshift, stats, report, project?}`. A transform may attach a synchronous
+ * `prepare(files)` hook; the runner calls it once with the selected source
+ * snapshots and passes its return value as `api.project`. Config codemods target
+ * the consumer's
  * astryx.config.* file; code codemods are applied to source files discovered
  * under `--path`, filtered by each codemod's `fileExtensions`.
  *
@@ -186,16 +189,50 @@ export function runCodeCodemod(entry, files, {apply, log, jscodeshift}) {
   /** @type {Array<{file: string, codemod: string, error: string}>} */
   const errors = [];
 
-  for (const filePath of files) {
-    const ext = path.extname(filePath);
-    if (!extensions.has(ext)) continue;
+  const transformFiles = files.filter(filePath =>
+    extensions.has(path.extname(filePath)),
+  );
+  /** @type {Map<string, string>} */
+  const preparedSources = new Map();
+  let project;
+  if (typeof codemod.transform.prepare === 'function') {
+    try {
+      const projectFiles = transformFiles.map(filePath => {
+        const source = fs.readFileSync(filePath, 'utf-8');
+        preparedSources.set(filePath, source);
+        return {path: filePath, source};
+      });
+      project = codemod.transform.prepare(projectFiles);
+    } catch (err) {
+      const message = /** @type {any} */ (err).message;
+      log.error(`    ✗ project preparation — ${message}`);
+      return {
+        filesChanged: 0,
+        writtenFiles: [],
+        errors: [{file: process.cwd(), codemod: name, error: message}],
+      };
+    }
+  }
 
+  const projectAware = typeof codemod.transform.prepare === 'function';
+  const transformErrorStart = errors.length;
+  /** @type {Array<{filePath: string, relativePath: string, result: string}>} */
+  const pendingChanges = [];
+
+  for (const filePath of transformFiles) {
+    const ext = path.extname(filePath);
     const relativePath = path.relative(process.cwd(), filePath);
     try {
-      const source = fs.readFileSync(filePath, 'utf-8');
+      const source =
+        preparedSources.get(filePath) ?? fs.readFileSync(filePath, 'utf-8');
       const parser = ext === '.tsx' || ext === '.ts' ? 'tsx' : 'babel';
       const j = jscodeshift.withParser(parser);
-      const api = {jscodeshift: j, stats: () => {}, report: () => {}};
+      const api = {
+        jscodeshift: j,
+        stats: () => {},
+        report: () => {},
+        project,
+      };
       let result = codemod.transform({source, path: filePath}, api);
 
       if (result == null || result === source) continue;
@@ -214,19 +251,39 @@ export function runCodeCodemod(entry, files, {apply, log, jscodeshift}) {
         continue;
       }
 
-      filesChanged++;
-      if (apply) {
-        fs.writeFileSync(filePath, result, 'utf-8');
-        writtenFiles.push(filePath);
-        log.success(`    ✓ ${relativePath}`);
+      if (projectAware) {
+        pendingChanges.push({filePath, relativePath, result});
       } else {
-        log.warn(`    ~ ${relativePath} (would change)`);
+        filesChanged++;
+        if (apply) {
+          fs.writeFileSync(filePath, result, 'utf-8');
+          writtenFiles.push(filePath);
+          log.success(`    ✓ ${relativePath}`);
+        } else {
+          log.warn(`    ~ ${relativePath} (would change)`);
+        }
       }
     } catch (err) {
       const message = /** @type {any} */ (err).message;
       log.error(`    ✗ ${relativePath} — ${message}`);
       errors.push({file: relativePath, codemod: name, error: message});
     }
+  }
+
+  // Project-aware migrations are validated as a set before any write starts.
+  if (projectAware && errors.length === transformErrorStart) {
+    filesChanged = pendingChanges.length;
+    for (const change of pendingChanges) {
+      if (apply) {
+        fs.writeFileSync(change.filePath, change.result, 'utf-8');
+        writtenFiles.push(change.filePath);
+        log.success(`    ✓ ${change.relativePath}`);
+      } else {
+        log.warn(`    ~ ${change.relativePath} (would change)`);
+      }
+    }
+  } else if (projectAware && pendingChanges.length > 0) {
+    log.error('    ✗ project-aware changes were not written (validation failed)');
   }
 
   return {filesChanged, writtenFiles, errors};

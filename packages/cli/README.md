@@ -574,6 +574,12 @@ the promoted files from `next`.
 This mirrors Changesets: feature PRs stage migration work without knowing the
 future release number; the release PR assigns the exact version.
 
+A code transform may attach `transform.prepare(files)`. The runner calls it once
+with the exact `{path, source}` snapshots selected for that transform and passes
+the returned value as `api.project` to every per-file call. Project-aware
+outputs are all validated before writes begin, so a validation failure does not
+leave a partially migrated source set.
+
 ## Integrations
 
 An **integration** is any npm package that contributes its own components,

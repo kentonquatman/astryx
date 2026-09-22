@@ -21,11 +21,11 @@ const c = <Avatar name="C" size="small" />;
 const d = <Avatar name="D" size="medium" />;
 const e = <Avatar name="E" size="large" />;`;
     const output = await applyTransform(input);
-    expect(output).toContain(`size='xsm'`);
-    expect(output).toContain(`size='sm'`);
-    expect(output).toContain(`size='md'`);
-    expect(output).toContain(`size='lg'`);
-    expect(output).toContain(`size='xl'`);
+    expect(output).toContain(`size="xsm"`);
+    expect(output).toContain(`size="sm"`);
+    expect(output).toContain(`size="md"`);
+    expect(output).toContain(`size="lg"`);
+    expect(output).toContain(`size="xl"`);
     for (const old of ['tiny', 'xsmall', 'small', 'medium', 'large']) {
       expect(output).not.toContain(`size="${old}"`);
     }
@@ -35,7 +35,7 @@ const e = <Avatar name="E" size="large" />;`;
     const input = `import {AvatarGroup} from '@astryxdesign/core';
 const x = <AvatarGroup size="medium">{kids}</AvatarGroup>;`;
     const output = await applyTransform(input);
-    expect(output).toContain(`size='lg'`);
+    expect(output).toContain(`size="lg"`);
   });
 
   it('leaves numeric sizes untouched', async () => {
@@ -49,16 +49,16 @@ const x = <Avatar name="A" size={48} />;`;
     const input = `import {Avatar as Face} from '@astryxdesign/core';
 const x = <Face name="A" size="small" />;`;
     const output = await applyTransform(input);
-    expect(output).toContain(`size='md'`);
+    expect(output).toContain(`size="md"`);
   });
 
   it('renames the subpath and legacy import sources', async () => {
     const sub = `import {Avatar} from '@astryxdesign/core/Avatar';
 const x = <Avatar name="A" size="large" />;`;
-    expect(await applyTransform(sub)).toContain(`size='xl'`);
+    expect(await applyTransform(sub)).toContain(`size="xl"`);
     const legacy = `import {Avatar} from '@xds/core';
 const x = <Avatar name="A" size="tiny" />;`;
-    expect(await applyTransform(legacy)).toContain(`size='xsm'`);
+    expect(await applyTransform(legacy)).toContain(`size="xsm"`);
   });
 
   it('renames a size inside a ternary on an Avatar element', async () => {
@@ -68,33 +68,31 @@ const x = <Avatar name="A" size={big ? 'large' : 'small'} />;`;
     expect(output).toContain(`big ? 'xl' : 'md'`);
   });
 
-  it('renames the UNIQUE names tiny/xsmall in Storybook options and size args', async () => {
+  it('leaves context-blind Storybook sizes untouched', async () => {
     const input = `import {Avatar} from '@astryxdesign/core';
 const meta = {
   argTypes: {size: {control: 'select', options: ['tiny', 'xsmall']}},
   args: {size: 'tiny'},
 };`;
     const output = await applyTransform(input);
-    expect(output).toContain(`['xsm', 'sm']`);
-    expect(output).toContain(`size: 'xsm'`);
+    expect(output).toContain(`['tiny', 'xsmall']`);
+    expect(output).toContain(`size: 'tiny'`);
   });
 
-  it('renames a FULL Storybook options array (unique name unlocks ambiguous members)', async () => {
-    // The presence of a unique name (tiny/xsmall) proves the whole array is the
-    // Avatar size enum, so small/medium/large in it are safe to rename too.
+  it('leaves a context-blind full size array untouched', async () => {
     const input = `import {Avatar} from '@astryxdesign/core';
 const meta = {
   argTypes: {size: {control: 'select', options: ['tiny', 'xsmall', 'small', 'medium', 'large']}},
 };`;
     const output = await applyTransform(input);
-    expect(output).toContain(`['xsm', 'sm', 'md', 'lg', 'xl']`);
+    expect(output).toContain(`['tiny', 'xsmall', 'small', 'medium', 'large']`);
   });
 
-  it('renames a standalone Avatar-size array literal used with .map()', async () => {
+  it('leaves a standalone size array untouched', async () => {
     const input = `import {AvatarGroup} from '@astryxdesign/core';
 const sizes = (['tiny', 'xsmall', 'small', 'medium', 'large'] as const).map(s => s);`;
     const output = await applyTransform(input);
-    expect(output).toContain(`['xsm', 'sm', 'md', 'lg', 'xl']`);
+    expect(output).toContain(`['tiny', 'xsmall', 'small', 'medium', 'large']`);
   });
 
   it('does NOT rename an array of ambiguous words with no unique Avatar name', async () => {
@@ -106,11 +104,11 @@ const densities = ['small', 'medium', 'large'] as const;`;
     expect(output).toContain(`['small', 'medium', 'large']`);
   });
 
-  it('renames a UNIQUE name in a size-typed union literal', async () => {
+  it('leaves a context-blind size-typed union untouched', async () => {
     const input = `import {Avatar} from '@astryxdesign/core';
 type Props = {size: 'tiny' | 'xsmall'};`;
     const output = await applyTransform(input);
-    expect(output).toContain(`'xsm' | 'sm'`);
+    expect(output).toContain(`'tiny' | 'xsmall'`);
   });
 
   // --- Precision guards: ambiguous common words must NOT be corrupted in
@@ -156,6 +154,6 @@ const label = 'small';
 const x = <Avatar name="A" size="small" />;`;
     const output = await applyTransform(input);
     expect(output).toContain(`const label = 'small'`);
-    expect(output).toContain(`size='md'`);
+    expect(output).toContain(`size="md"`);
   });
 });

@@ -26,16 +26,24 @@ export interface AstryxCodemodApi {
   stats: (...args: unknown[]) => void;
   /** Report progress (no-op-friendly; provided for jscodeshift parity). */
   report: (...args: unknown[]) => void;
+  /** Optional context prepared once from all runner-selected source files. */
+  project?: unknown;
 }
+
+/** Prepare shared, read-only context before transforming individual files. */
+export type AstryxCodemodPrepare = (
+  files: ReadonlyArray<AstryxCodemodFile>,
+) => unknown;
 
 /**
  * A codemod's transform. Return the new source to rewrite the file, or
- * `null`/`undefined` to leave the file unchanged.
+ * `null`/`undefined` to leave the file unchanged. A transform may expose a
+ * `prepare` hook to derive shared context from all selected source files.
  */
-export type AstryxCodemodTransform = (
-  file: AstryxCodemodFile,
-  api: AstryxCodemodApi,
-) => string | null | undefined;
+export interface AstryxCodemodTransform {
+  (file: AstryxCodemodFile, api: AstryxCodemodApi): string | null | undefined;
+  prepare?: AstryxCodemodPrepare;
+}
 
 /** Definition an author writes for a file-transforming codemod. */
 export interface AstryxCodemodDef {
@@ -86,10 +94,13 @@ export interface AstryxConfigCodemod extends AstryxConfigCodemodDef {
  * the AST surface (`api.jscodeshift`, paths, node attributes) is untyped by
  * design; transforms operate on it dynamically.
  */
-export type CodemodTransform = (
-  file: AstryxCodemodFile,
-  api: CodemodTransformApi,
-) => string | null | undefined;
+export interface CodemodTransform {
+  (
+    file: AstryxCodemodFile,
+    api: CodemodTransformApi,
+  ): string | null | undefined;
+  prepare?: AstryxCodemodPrepare;
+}
 
 /**
  * The `api` argument as seen INSIDE a transform implementation. Identical to
@@ -100,6 +111,8 @@ export interface CodemodTransformApi {
   jscodeshift: JscodeshiftFactory;
   stats: (...args: unknown[]) => void;
   report: (...args: unknown[]) => void;
+  /** Shared context returned by the transform's optional prepare hook. */
+  project?: unknown;
 }
 
 /**

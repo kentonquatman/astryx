@@ -307,17 +307,39 @@ export async function runCodemods(
       }
 
       let filesChanged = 0;
+      const projectAware = typeof transform.prepare === 'function';
+      const transformErrorStart = errors.length;
+      /** @type {Array<{filePath: string, relativePath: string, result: string}>} */
+      const pendingChanges = [];
+      const transformFiles = files.filter(filePath =>
+        transformExtensions.has(path.extname(filePath)),
+      );
+      /** @type {Map<string, string>} */
+      const preparedSources = new Map();
+      let project;
+      if (typeof transform.prepare === 'function') {
+        try {
+          const projectFiles = transformFiles.map(filePath => {
+            const source = fs.readFileSync(filePath, 'utf-8');
+            preparedSources.set(filePath, source);
+            return {path: filePath, source};
+          });
+          project = transform.prepare(projectFiles);
+        } catch (err) {
+          const message = /** @type {any} */ (err).message;
+          log.error(`    ✗ project preparation — ${message}`);
+          errors.push({file: resolvedPath, codemod: name, error: message});
+          continue;
+        }
+      }
 
-      for (const filePath of files) {
+      for (const filePath of transformFiles) {
         const relativePath = path.relative(process.cwd(), filePath);
 
         try {
           const ext = path.extname(filePath);
-          if (!transformExtensions.has(ext)) {
-            continue;
-          }
-
-          const source = fs.readFileSync(filePath, 'utf-8');
+          const source =
+            preparedSources.get(filePath) ?? fs.readFileSync(filePath, 'utf-8');
           // Configure parser based on file extension
           const parser = ext === '.tsx' || ext === '.ts' ? 'tsx' : 'babel';
           const j = jscodeshift.withParser(parser);
@@ -325,6 +347,7 @@ export async function runCodemods(
             jscodeshift: j,
             stats: () => {},
             report: () => {},
+            project,
           };
           const file = {source, path: filePath};
 
@@ -351,16 +374,20 @@ export async function runCodemods(
               continue;
             }
 
-            filesChanged++;
-            totalFilesChanged++;
-            totalTransformsApplied++;
-
-            if (apply) {
-              fs.writeFileSync(filePath, result, 'utf-8');
-              writtenFiles.push(filePath);
-              log.success(`    ✓ ${relativePath}`);
+            if (projectAware) {
+              pendingChanges.push({filePath, relativePath, result});
             } else {
-              log.warn(`    ~ ${relativePath} (would change)`);
+              filesChanged++;
+              totalFilesChanged++;
+              totalTransformsApplied++;
+
+              if (apply) {
+                fs.writeFileSync(filePath, result, 'utf-8');
+                writtenFiles.push(filePath);
+                log.success(`    ✓ ${relativePath}`);
+              } else {
+                log.warn(`    ~ ${relativePath} (would change)`);
+              }
             }
           }
         } catch (err) {
@@ -368,6 +395,25 @@ export async function runCodemods(
           log.error(`    ✗ ${relativePath} — ${message}`);
           errors.push({file: relativePath, codemod: name, error: message});
         }
+      }
+
+      // Project-aware migrations may coordinate edits across files. Validate
+      // every result before beginning the write phase.
+      if (projectAware && errors.length === transformErrorStart) {
+        filesChanged = pendingChanges.length;
+        totalFilesChanged += filesChanged;
+        totalTransformsApplied += filesChanged;
+        for (const change of pendingChanges) {
+          if (apply) {
+            fs.writeFileSync(change.filePath, change.result, 'utf-8');
+            writtenFiles.push(change.filePath);
+            log.success(`    ✓ ${change.relativePath}`);
+          } else {
+            log.warn(`    ~ ${change.relativePath} (would change)`);
+          }
+        }
+      } else if (projectAware && pendingChanges.length > 0) {
+        log.error('    ✗ project-aware changes were not written (atomic rollback)');
       }
 
       if (filesChanged > 0) {
