@@ -1,5 +1,66 @@
 # @xds/core
 
+# 0.6.3
+
+#### New Features
+
+- Markdown: add native typed frontmatter metadata (#6381)
+  Use `createMarkdownFrontmatter()` from `@astryxdesign/core/Markdown/plugins` to decode a document-start key/value block into typed metadata, keep unfinished streaming metadata hidden, and remove completed metadata syntax from rendered Markdown.
+- Markdown: add the core plugin protocol (#6340)
+  Use `createMarkdownPlugin()` and Markdown's `plugins` prop to compose bounded source syntax, immutable typed AST transforms, and extension renderers. Import `parseMarkdownAst()` or `parseInlineAst()` from `@astryxdesign/core/Markdown/parser` when server code needs the canonical tree. The same ordered plugins work with parser entry points and Markdown-derived Outline items, while omitted or empty plugin lists preserve existing behavior.
+- Markdown: add a limited Remark compatibility adapter (#6345)
+  Import `createMarkdownRemarkTransform()` from `@astryxdesign/core/Markdown/remark` to run one synchronous transform-only Remark plugin over the documented MDAST subset. Every invocation gets a fresh mutable tree and an isolated file, and each plugin's compatibility is proven by fixtures rather than assumed: async work, parser or compiler plugins, processor state, raw HTML, unsupported nodes, forged positions, and metadata Astryx cannot represent keep the last valid readable document and report one diagnostic. The adapter is a separate entry point, so it stays out of every bundle that does not import it.
+- Markdown: add a semantic code-fence transform helper (#6343)
+  Use `createMarkdownFenceTransform()` to annotate declared fenced-code languages with typed extension data while standard plugin `renderers` own presentation and text projection. `components.code` retains precedence, and declined, missing, or failed proposals preserve Markdown's accessible, copyable `CodeBlock` fallback.
+- Markdown: add an immutable source-decoration helper (#6344)
+  Use `createMarkdownSourceDecoration()` to attach non-visual metadata to every block a validated UTF-16 source range touches, and `getMarkdownSourceDecorations()` to read it back in a later plugin. It works through `<Markdown>` and Outline with no extra parser options, resolves independently of the order earlier transforms left blocks in, and appears on the settled document rather than on partial streaming chunks, so a decoration never appears and then vanishes. Metadata lives in one versioned Astryx-owned envelope that never merges foreign node data. Rendered output, copyable text, accessible names, heading ids, focus order, navigation, and source provenance are unchanged.
+
+  Markdown transforms also got faster, and a plugin now always observes a fully immutable tree — including blocks a Core helper carried over untouched. Core-authored helpers now validate the nodes a caller's callback produced and run on a trusted path that skips the whole-tree validation and freezing applied to plugin-authored output, freezing walks only what a transform changed, a plugin list that contributes no inline syntax no longer costs anything per source character, and the helpers' per-match allocations and rebuilds are gone. The representative three-helper set now adds about 20 percent over an empty pipeline, inside its 25 percent budget, down from roughly 3.3x.
+
+- Markdown: add an immutable text-transform helper (#6342)
+  Use `createMarkdownTextTransform()` to replace matching prose with typed Markdown nodes while preserving links, images, code, math, citations, and existing extension syntax as protected contexts.
+- Add pressed feedback to CheckboxInput, Collapsible, Link, Slider, Switch, TabList, RadioList, and unselected SegmentedControl items. Enabled controls paint `--color-overlay-pressed` on their interaction surface during pointer hold or drag; disabled controls and selected SegmentedControl items keep their existing surfaces. (#6380)
+
+#### Fixes
+
+- Make overflowing BottomSheet text keyboard reachable with a named scroll-body tab stop. Add shared focus-time keyboard delegation to `useScrollableArea`: forward Tab may enter the first native link/button directly, while inputs, composite widgets, and nested scroll owners retain the viewport stop. Reverse traversal skips the delegated viewport; pointer/programmatic focus and content changes never trigger delegation. Sheet scroll containment now applies only while content overflows and uses the shared `contain` policy, which permits native edge feedback. (#6301)
+- Keep ChatComposer's public composition contracts aligned: custom inputs now submit the value they supply, disabled default editors expose their state to assistive technology, and an explicitly shown Stop action remains pointer-operable while editing is disabled. (#6398)
+- Keep collapsed `ChatComposerDrawer` content out of keyboard and assistive-technology navigation, and show the shared focus indicator on its disclosure control. (#6416)
+- Keep programmatic ChatComposerInput edits observable, deliver dropped files through `onFiles`, and let `onPaste` intercept text before default token conversion. (#6419)
+- Export `ChatComposerTokenElementProps` and forward supported span props and refs from `ChatComposerTokenElement` (#6443).
+- Keep the chat dictation control disabled when speech recognition is unavailable, and preserve theme control over its clipping feedback (#6444).
+- Clip the resizable SideNav handle within the sidebar bounds (#6196)
+- scope the 16px text-control font-size floor to iOS with `@supports (-webkit-touch-callout: none)` inside the coarse-pointer query, so Android and touch-screen laptops keep the theme's type scale instead of an inflated 16px (#6085; fixes #6015)
+- Kbd: render the `esc` and `return` aliases with the same glyphs and accessible names as `escape` and `enter` (#5657)
+  This partial fix for #5403 normalizes the two unambiguous aliases already accepted by `useHotkeys`. Kbd now renders `esc` as `Esc` with the accessible name `Escape`, and `return` as `↵` with the accessible name `Enter`. Its lookup tables now also avoid prototype-chain collisions when rendering arbitrary key names. The platform-specific rendering contract for `meta` and display choice for `space` remain unresolved in #5403 pending separate API and design decisions.
+- LayoutFooter: add playground wrapper and default children for docsite preview (#6341)
+  Prevents the properties-tab preview on the docsite from rendering an empty stage by wrapping LayoutFooter inside a Layout scaffold with representative footer content in the footer slot.
+- PowerSearch: switching the field or operator while the value menu is open now shows the new field's options instead of the old ones. (#6357)
+- Move focusable ProgressBar target marks outside the `progressbar` subtree (#6248)
+- Spinner: animate the arc's dash offset instead of rotating the ring, fixing residual wobble on iOS Safari (#6311; fixes #6253)
+  The earlier fix for #3617 added `willChange: 'transform'` to the rotating `<svg>`, which smooths the rotation's motion but does nothing about how WebKit rasterizes a rotating stroked shape's rounded cap on each frame. Rotating the whole ring still visibly wobbled on iOS Safari.
+
+  Animates `stroke-dashoffset` on the stationary arc `<circle>` instead of rotating the `<svg>`, so the shape never rotates and WebKit never re-rasterizes the cap at an intermediate angle. Confirmed against a real iOS Safari device by the issue reporter.
+
+- Table: contain overscroll only while its inner viewport can scroll, so a fitting table no longer creates a dead scroll zone in its parent. (#6410)
+- Keep a ToggleButton's own `isDisabled` when its ToggleButtonGroup does not disable anything. The group always supplies an `isDisabled` boolean, so the previous `??` fallback never ran and an enabled group re-enabled a member that had disabled itself — the member selected on click, and a member carrying a `tooltip` stayed operable while looking unavailable. A disabled group still disables every member; it just cannot re-enable one. (#6356)
+
+#### Contributors
+
+Thanks to everyone who contributed to this release:
+
+- @cixzhang
+- @harjothkhara
+- @HelloOjasMutreja
+- @jiunshinn
+- @korkt-kim
+- @ManoharPaturi
+- @nynexman4464
+- @rupesh-kumar-sah
+- @vjeux
+
+---
+
 # 0.6.2
 
 #### New Features
